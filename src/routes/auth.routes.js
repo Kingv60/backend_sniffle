@@ -1,13 +1,13 @@
-// src/routes/auth.routes.js
 const express = require("express");
-const { register, login } = require("../controllers/auth.controllers");
-
 const router = express.Router();
+const authController = require("../controllers/auth.controller");
+const authMiddleware = require("../middleware/auth.middleware"); // optional, but recommended
 
-// POST /api/auth/register
-router.post("/register", register);
+// ✅ Register & Login
+router.post("/register", authController.register);
+router.post("/login", authController.login);
 
-// POST /api/auth/login
-router.post("/login", login);
+// ✅ Delete user (rollback) - requires authentication
+router.delete("/users/:userId", authMiddleware, authController.deleteUser);
 
 module.exports = router;

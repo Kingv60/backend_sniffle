@@ -1,28 +1,22 @@
-const path = require("path");
-const fs = require("fs");
+const app = require("./src/app");
+const initDB = require("./src/config/initDB");
 
-// Debug info
-console.log("CWD =", process.cwd());
-console.log("__dirname =", __dirname);
-console.log(
-  "ENV EXISTS =",
-  fs.existsSync(path.join(__dirname, ".env"))
-);
+const PORT = 8000;
 
-// Load env
-require("dotenv").config({
-  path: path.join(__dirname, ".env"),
-});
+const startServer = async () => {
+  try {
+    // Initialize tables
+    await initDB();
 
-// Show env values
-console.log("PORT =", process.env.PORT);
-console.log("JWT_SECRET =", process.env.JWT_SECRET);
+    // Start server only after DB ready
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
 
-// App start
-const app = require("./src/app.js");
+  } catch (error) {
+    console.error("❌ Failed to start server:", error);
+    process.exit(1);
+  }
+};
 
-const PORT=8080;
-
-app.listen(PORT, () => {
-  console.log(`✅ Server is running on PORT ${PORT}`);
-});
+startServer();

@@ -2,6 +2,8 @@ const pool = require("../config/db");
 const ffmpeg = require("fluent-ffmpeg");
 const path = require("path");
 const fs = require("fs");
+const { getUploadUrl, isLocalUpload, isLocalUrl } = require("../utils/uploadHelpers");
+const { cloudinary } = require("../config/cloudinary");
 
 const uploadsFolder = path.resolve(__dirname, "../../uploads");
 
@@ -17,9 +19,10 @@ exports.createPost = async (req, res) => {
   const mediaFile = req.files['media'][0];
   const manualThumb = req.files['thumbnail'] ? req.files['thumbnail'][0] : null;
 
-  const media_url = `/uploads/${mediaFile.filename}`;
+  const media_url = getUploadUrl(mediaFile);
   const isVideo = mediaFile.mimetype.startsWith("video");
   const media_type = isVideo ? "video" : "image";
+  const isLocalFile = isLocalUpload(mediaFile);
 
   const client = await pool.connect();
   try {
@@ -34,15 +37,33 @@ exports.createPost = async (req, res) => {
 
     if (isVideo) {
       if (manualThumb) {
-        // Option A: Use User-Uploaded Thumbnail
-        const thumbUrl = `/uploads/${manualThumb.filename}`;
+        const thumbUrl = getUploadUrl(manualThumb);
         await client.query(
           `INSERT INTO video_metadata (post_id, thumbnail_url, processing_status)
            VALUES ($1, $2, $3)`,
           [newPost.post_id, thumbUrl, 'completed']
         );
-      } else {
-        // Option B: Auto-Generate Thumbnail using FFmpeg
+      } else if (mediaFile.eager?.[0]?.secure_url) {
+        const thumbUrl = mediaFile.eager[0].secure_url;
+        await client.query(
+          `INSERT INTO video_metadata (post_id, thumbnail_url, processing_status)
+           VALUES ($1, $2, $3)`,
+          [newPost.post_id, thumbUrl, 'completed']
+        );
+      } else if (mediaFile.public_id && cloudinary) {
+        const thumbUrl = cloudinary.url(mediaFile.public_id, {
+          resource_type: 'video',
+          format: 'jpg',
+          transformation: [
+            { width: 320, height: 240, crop: 'thumb', gravity: 'south' },
+          ],
+        });
+        await client.query(
+          `INSERT INTO video_metadata (post_id, thumbnail_url, processing_status)
+           VALUES ($1, $2, $3)`,
+          [newPost.post_id, thumbUrl, 'completed']
+        );
+      } else if (isLocalFile) {
         const thumbFileName = `thumb-${Date.now()}.jpg`;
         const thumbUrl = `/uploads/${thumbFileName}`;
 
@@ -61,6 +82,12 @@ exports.createPost = async (req, res) => {
             );
           })
           .on("error", (err) => console.error("FFmpeg Auto-Thumb Error:", err));
+      } else {
+        await client.query(
+          `INSERT INTO video_metadata (post_id, thumbnail_url, processing_status)
+           VALUES ($1, $2, $3)`,
+          [newPost.post_id, null, 'pending']
+        );
       }
     }
 
@@ -177,17 +204,16 @@ exports.deletePost = async (req, res) => {
     await client.query("DELETE FROM video_metadata WHERE post_id = $1", [postId]);
     await client.query("DELETE FROM media_posts WHERE post_id = $1", [postId]);
 
-    // Physical File Deletion
-    const deleteFile = (url) => {
-      if (url) {
-        const fileName = url.split('/').pop();
-        const filePath = path.join(uploadsFolder, fileName);
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      }
+    // Physical File Deletion only for local uploads
+    const deleteLocalFile = (url) => {
+      if (!isLocalUrl(url)) return;
+      const fileName = url.split('/').pop();
+      const filePath = path.join(uploadsFolder, fileName);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     };
 
-    deleteFile(mediaUrl);
-    deleteFile(thumbUrl);
+    deleteLocalFile(mediaUrl);
+    deleteLocalFile(thumbUrl);
 
     await client.query("COMMIT");
     res.json({ message: "Post and files deleted successfully" });

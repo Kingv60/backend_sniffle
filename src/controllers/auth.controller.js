@@ -2,6 +2,43 @@ const pool = require("../config/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+
+exports.checkUsername = async (req, res) => {
+  try {
+    const { name } = req.body; // 'name' is what comes from Flutter/Postman
+
+    if (!name) {
+      return res.status(400).json({ available: false, message: "Username is required" });
+    }
+
+    // 🔴 FIXED: Changed 'name' to 'username' to match your CREATE TABLE script
+    const result = await pool.query(
+      "SELECT username FROM user_profile WHERE LOWER(username) = LOWER($1) LIMIT 1",
+      [name]
+    );
+
+
+    if (result.rows.length > 0) {
+      return res.status(200).json({ 
+        available: false, 
+        message: "Username is already taken" 
+      });
+    }
+
+    return res.status(200).json({ 
+      available: true, 
+      message: "Username is available" 
+    });
+
+  } catch (error) {
+  
+    res.status(500).json({ 
+      available: false, 
+      message: "Server Error",
+      debug: error.message 
+    });
+  }
+};
 // ================= REGISTER =================
 exports.register = async (req, res) => {
   try {
@@ -82,6 +119,8 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ message: "Failed to delete user" });
   }
 };
+
+
 
 // ================= LOGIN =================
 exports.login = async (req, res) => {

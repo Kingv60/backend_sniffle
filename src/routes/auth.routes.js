@@ -6,6 +6,7 @@ const authMiddleware = require("../middleware/auth.middleware"); // optional, bu
 // ✅ Register & Login
 router.post("/register", authController.register);
 router.post("/login", authController.login);
+router.post("/check-username", authController.checkUsername);
 
 // ✅ Delete user (rollback) - requires authentication
 router.delete("/users/:userId", authMiddleware, authController.deleteUser);

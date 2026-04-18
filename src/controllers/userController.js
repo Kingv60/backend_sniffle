@@ -50,3 +50,20 @@ exports.searchUsers = async (req, res) => {
     res.status(500).json({ error: "Database error occurred" });
   }
 };
+
+
+// ================= SAVE/UPDATE FCM TOKEN =================
+exports.updateFcmToken = async (req, res) => {
+  const { fcm_token } = req.body;
+  const user_id = req.user.user_id; // Auth middleware se mil raha hai
+
+  try {
+    await pool.query(
+      "UPDATE users SET fcm_token = $1 WHERE user_id = $2",
+      [fcm_token, user_id]
+    );
+    res.json({ success: true, message: "FCM Token updated" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

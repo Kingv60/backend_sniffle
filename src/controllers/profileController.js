@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { getUploadUrl } = require("../utils/uploadHelpers");
 
 exports.createProfile = async (req, res) => {
   const user_id = req.user.user_id;
@@ -17,7 +18,7 @@ exports.createProfile = async (req, res) => {
     let avatar_url = null;
 
     if (req.file) {
-      avatar_url = `/uploads/${req.file.filename}`;
+      avatar_url = getUploadUrl(req.file);
     }
 
     const result = await pool.query(
@@ -83,7 +84,7 @@ exports.updateProfile = async (req, res) => {
 
     // keep old avatar if new not uploaded
     const avatar_url = req.file
-      ? `/uploads/${req.file.filename}`
+      ? getUploadUrl(req.file)
       : current.rows[0].avatar_url;
 
     const result = await pool.query(

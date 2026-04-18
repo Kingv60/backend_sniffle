@@ -1,38 +1,46 @@
-const multer = require("multer");
+﻿const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { upload: cloudinaryUpload } = require("../config/cloudinary");
 
-// Ensure upload directory exists
-const uploadDir = "uploads/";
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+const localUploadDir = "uploads/";
+if (!fs.existsSync(localUploadDir)) {
+  fs.mkdirSync(localUploadDir);
 }
 
-// 1. Storage Configuration
-const storage = multer.diskStorage({
+const localStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    cb(null, localUploadDir);
   },
   filename: (req, file, cb) => {
-    // Save as: timestamp-originalName
     cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
 
-// 2. File Filter (Security)
 const fileFilter = (req, file, cb) => {
-
-  console.log("Uploaded file:", file.originalname);
-  console.log("Mime type:", file.mimetype);
+  console.log("Upload attempt:", {
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    size: file.size
+  });
 
   const allowedMimeTypes = [
     "image/jpeg",
     "image/png",
     "image/svg+xml",
     "image/gif",
+    "image/webp",
+    "image/bmp",
+    "image/tiff",
+    "image/x-icon",
     "video/mp4",
     "video/mpeg",
-    "video/quicktime"
+    "video/quicktime",
+    "video/x-msvideo",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
   ];
 
   const allowedExtensions = [
@@ -43,7 +51,16 @@ const fileFilter = (req, file, cb) => {
     ".gif",
     ".mp4",
     ".mpeg",
-    ".mov"
+    ".mov",
+    ".avi",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".txt",
+    ".webp",
+    ".bmp",
+    ".tiff",
+    ".ico",
   ];
 
   const ext = path.extname(file.originalname).toLowerCase();
@@ -51,17 +68,18 @@ const fileFilter = (req, file, cb) => {
   if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error("Invalid file type. Only images and videos are allowed."), false);
+    cb(new Error(`Unsupported file format. Allowed: ${allowedExtensions.join(', ')}`), false);
   }
 };
 
-// 3. The Middleware Instance
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
+const standardUpload = multer({
+  storage: localStorage,
+  fileFilter,
   limits: {
-    fileSize: 500 * 1024 * 1024, // 500MB Limit
+    fileSize: 500 * 1024 * 1024,
   },
 });
+
+const upload = cloudinaryUpload || standardUpload;
 
 module.exports = upload;

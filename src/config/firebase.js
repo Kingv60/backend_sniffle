@@ -1,7 +1,14 @@
 const admin = require("firebase-admin");
 
-// Hum 'src/config' mein hain, isliye root tak jaane ke liye ../../ chahiye
-const serviceAccount = require("../../service-account.json"); 
+let serviceAccount;
+
+if (process.env.GCP_JSON_KEY) {
+  // On Render: Parse the JSON string from the environment variable
+  serviceAccount = JSON.parse(process.env.GCP_JSON_KEY);
+} else {
+  // On your Local PC: Use the file (make sure the path is correct)
+  serviceAccount = require("../../service-account.json");
+}
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)

@@ -14,5 +14,6 @@ router.get('/search', authenticateToken, userController.searchUsers);
 // ================= SAVE FCM TOKEN =================
 // Ab userController defined hai, toh ye error nahi dega
 router.post("/update-fcm-token", authenticateToken, userController.updateFcmToken);
+router.post('/logout', authenticateToken, userController.logout);
 
 module.exports = router;

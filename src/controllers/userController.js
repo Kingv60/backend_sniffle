@@ -67,3 +67,23 @@ exports.updateFcmToken = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.logout = async (req, res) => {
+  const user_id = req.user.user_id; // Identified via Auth middleware (JWT)
+
+  try {
+    // We set fcm_token to NULL so notifications stop for this user
+    await pool.query(
+      "UPDATE users SET fcm_token = NULL WHERE user_id = $1",
+      [user_id]
+    );
+
+    res.json({ 
+      success: true, 
+      message: "Logged out successfully and FCM token removed" 
+    });
+  } catch (err) {
+    console.error("Logout Error:", err);
+    res.status(500).json({ error: "Server error during logout" });
+  }
+};

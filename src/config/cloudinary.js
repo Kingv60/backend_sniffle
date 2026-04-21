@@ -23,8 +23,8 @@ if (cloudName && apiKey && apiSecret) {
       
       return {
         folder: 'skillconnect_media',
-        resource_type: isSvg ? 'raw' : 'auto',
-        format: isSvg ? 'svg' : 'auto',
+        resource_type: isSvg ? 'image' : 'auto',
+        format: isSvg ? 'svg' : undefined,
         quality: 'auto',
         flags: isSvg ? undefined : 'sanitize',
         allowed_formats: ['jpg', 'png', 'svg', 'mp4', 'jpeg', 'gif', 'mov', 'mpeg', 'webp', 'bmp', 'tiff', 'ico'],

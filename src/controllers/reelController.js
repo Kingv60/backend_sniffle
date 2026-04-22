@@ -41,24 +41,27 @@ exports.createReel = async (req, res) => {
 };
 
 // Get Reels by Specific User ID (Bina Token ke)
-exports.getReelsByUserId = async (req, res) => {
-  const { userId } = req.params; // URL se ID lega (e.g. /reels/user/5)
+exports.getReelsFeed = async (req, res) => {
+  // Use optional chaining to handle guests if your middleware allows it
+  const current_user_id = req.user?.user_id || 0; 
 
   try {
     const result = await pool.query(
-      `SELECT r.*, 
-       (SELECT COUNT(*) FROM reelviews rv WHERE rv.reelid = r.reelid AND rv.watchedseconds >= 10) AS views
+      `SELECT r.*, u.name, up.avatar_url,
+        (SELECT COUNT(*) FROM reel_likes rl WHERE rl.reelid = r.reelid) AS likes_count,
+        (SELECT COUNT(*) FROM reel_comments rc WHERE rc.reelid = r.reelid) AS comments_count,
+        (SELECT COUNT(*) FROM reelviews rv WHERE rv.reelid = r.reelid AND rv.watchedseconds >= 10) AS views_count,
+        EXISTS(SELECT 1 FROM reel_likes WHERE reelid = r.reelid AND user_id = $1) AS is_liked
        FROM reels r
-       WHERE r.userid = $1
-       ORDER BY r.createdat DESC`,
-      [userId]
+       LEFT JOIN users u ON r.userid = u.user_id
+       LEFT JOIN user_profile up ON r.userid = up.user_id
+       ORDER BY r.createdat DESC
+       LIMIT 50`,
+      [current_user_id]
     );
 
-    // Agar koi reel nahi mili toh empty array [] jayega
     res.json(result.rows);
-
   } catch (error) {
-    console.error("❌ Error fetching reels:", error.message);
     res.status(500).json({ error: error.message });
   }
 };
@@ -95,15 +98,15 @@ exports.getMyReels = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT *
-       FROM reels
-       WHERE userid = $1
-       ORDER BY createdat DESC`,
+      `SELECT r.*, up.avatar_url
+       FROM reels r
+       LEFT JOIN user_profile up ON r.userid = up.user_id
+       WHERE r.userid = $1
+       ORDER BY r.createdat DESC`,
       [userid]
     );
 
     res.json(result.rows);
-
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

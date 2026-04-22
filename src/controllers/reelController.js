@@ -67,31 +67,6 @@ exports.getReelsFeed = async (req, res) => {
 };
 
 
-// Get Reels Feed
-exports.getReelsFeed = async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT r.*, u.name, v.views
-       FROM reels r
-       LEFT JOIN users u ON r.userid = u.user_id
-       LEFT JOIN (
-          SELECT reelid, COUNT(*) as views
-          FROM reelviews
-          WHERE watchedseconds >= 10
-          GROUP BY reelid
-       ) v ON r.reelid = v.reelid
-       ORDER BY r.createdat DESC
-       LIMIT 50`
-    );
-
-    res.json(result.rows);
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-
 // Get My Reels
 exports.getMyReels = async (req, res) => {
   const userid = req.user.user_id;

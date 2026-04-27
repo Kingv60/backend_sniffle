@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 const path = require('path');
 const fs = require('fs');
-const { getUploadUrl, removeLocalUpload, isLocalUpload } = require('../utils/uploadHelpers');
+const { getUploadUrl, removeLocalUpload, isLocalUpload, isLocalUrl } = require('../utils/uploadHelpers');
 const { cloudinary } = require('../config/cloudinary');
 const { messaging } = require('../config/firebase');
 
@@ -344,6 +344,63 @@ exports.getVideosByCourse = async (req, res) => {
   }
 };
 
+// Get next course videos after the currently playing lesson
+exports.getNextCourseVideoSuggestions = async (req, res) => {
+  const { video_id } = req.params;
+  const limit = 5;
+
+  if (!video_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'Current video_id is required to fetch next course suggestions'
+    });
+  }
+
+  try {
+    const currentResult = await pool.query(
+      `SELECT course_id, created_at FROM course_videos WHERE video_id = $1`,
+      [video_id]
+    );
+
+    if (currentResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Current video not found'
+      });
+    }
+
+    const { course_id, created_at } = currentResult.rows[0];
+
+    const nextVideosResult = await pool.query(
+      `SELECT 
+          video_id,
+          name AS title,
+          description,
+          video_url,
+          thumbnail_url,
+          user_id AS uploaded_by,
+          created_at
+       FROM course_videos
+       WHERE course_id = $1
+         AND video_id <> $2
+       ORDER BY created_at ASC, video_id ASC
+       LIMIT $3`,
+      [course_id, video_id, limit]
+    );
+
+    res.status(200).json({
+      success: true,
+      current_video_id: parseInt(video_id),
+      course_id: course_id,
+      suggestions: nextVideosResult.rows,
+      count: nextVideosResult.rows.length
+    });
+  } catch (err) {
+    console.error('❌ Error fetching next course video suggestions:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
 // Get all videos (latest to old) - requires authentication
 exports.getAllVideosLatest = async (req, res) => {
   // 1. requester_id: The person WATCHING the feed
@@ -489,6 +546,86 @@ exports.getSuggestedVideos = async (req, res) => {
     }
 };
 
+exports.updateVideo = async (req, res) => {
+    const { video_id } = req.params;
+    const { name, description, course_id } = req.body;
+    const user_id = req.user?.user_id || req.user?.id;
+
+    if (!video_id) {
+        return res.status(400).json({ success: false, message: "Video ID is required" });
+    }
+    if (!user_id) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const videoFile = req.files && req.files['video'] ? req.files['video'][0] : null;
+    const thumbFile = req.files && req.files['thumbnail'] ? req.files['thumbnail'][0] : null;
+
+    try {
+        const existing = await pool.query(
+            `SELECT video_url, thumbnail_url FROM course_videos WHERE video_id = $1 AND user_id = $2`,
+            [video_id, user_id]
+        );
+
+        if (existing.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Video not found or unauthorized" });
+        }
+
+        const currentVideo = existing.rows[0];
+        const updates = [];
+        const params = [];
+        let paramIndex = 1;
+
+        if (name !== undefined) {
+            updates.push(`name = $${paramIndex++}`);
+            params.push(name);
+        }
+        if (description !== undefined) {
+            updates.push(`description = $${paramIndex++}`);
+            params.push(description);
+        }
+        if (course_id !== undefined) {
+            updates.push(`course_id = $${paramIndex++}`);
+            params.push(parseInt(course_id) > 0 ? parseInt(course_id) : null);
+        }
+        if (videoFile) {
+            updates.push(`video_url = $${paramIndex++}`);
+            params.push(getUploadUrl(videoFile));
+        }
+        if (thumbFile) {
+            updates.push(`thumbnail_url = $${paramIndex++}`);
+            params.push(getUploadUrl(thumbFile));
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ success: false, message: "No update data provided" });
+        }
+
+        params.push(video_id);
+        params.push(user_id);
+
+        const updateQuery = `UPDATE course_videos SET ${updates.join(', ')} WHERE video_id = $${paramIndex++} AND user_id = $${paramIndex} RETURNING *`;
+        const result = await pool.query(updateQuery, params);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Video not found or unauthorized" });
+        }
+
+        if (videoFile && currentVideo.video_url && isLocalUrl(currentVideo.video_url)) {
+            const absoluteVideoPath = path.join(__dirname, '../../', currentVideo.video_url);
+            if (fs.existsSync(absoluteVideoPath)) fs.unlinkSync(absoluteVideoPath);
+        }
+        if (thumbFile && currentVideo.thumbnail_url && isLocalUrl(currentVideo.thumbnail_url)) {
+            const absoluteThumbPath = path.join(__dirname, '../../', currentVideo.thumbnail_url);
+            if (fs.existsSync(absoluteThumbPath)) fs.unlinkSync(absoluteThumbPath);
+        }
+
+        res.status(200).json({ success: true, video: result.rows[0] });
+    } catch (error) {
+        console.error("❌ Error updating video:", error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
 
 exports.deleteVideo = async (req, res) => {
     const { video_id } = req.params;

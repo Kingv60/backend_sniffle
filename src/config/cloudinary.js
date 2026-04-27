@@ -18,26 +18,46 @@ if (cloudName && apiKey && apiSecret) {
   const storage = new CloudinaryStorage({
     cloudinary,
     params: async (req, file) => {
-      const isSvg = file.mimetype === 'image/svg+xml' || file.originalname.toLowerCase().endsWith('.svg');
+  const isSvg =
+    file.mimetype === "image/svg+xml" ||
+    file.originalname.toLowerCase().endsWith(".svg");
 
-      
-      return {
-        folder: 'skillconnect_media',
-        resource_type: isSvg ? 'image' : 'auto',
-        format: isSvg ? 'svg' : undefined,
-        quality: 'auto',
-        flags: isSvg ? undefined : 'sanitize',
-        allowed_formats: ['jpg', 'png', 'svg', 'mp4', 'jpeg', 'gif', 'mov', 'mpeg', 'webp', 'bmp', 'tiff', 'ico'],
-        eager: isSvg ? undefined : [
-          {
-            width: 320,
-            height: 240,
-            crop: 'thumb',
-            gravity: 'south',
-          },
-        ],
-      };
-    },
+  if (isSvg) {
+    return {
+      folder: "skillconnect_media",
+      resource_type: "image",
+      format: "svg"
+    };
+  }
+
+  return {
+    folder: "skillconnect_media",
+    resource_type: "auto",
+    quality: "auto",
+    flags: "sanitize",
+    allowed_formats: [
+      "jpg",
+      "png",
+      "mp4",
+      "jpeg",
+      "gif",
+      "mov",
+      "mpeg",
+      "webp",
+      "bmp",
+      "tiff",
+      "ico"
+    ],
+    eager: [
+      {
+        width: 320,
+        height: 240,
+        crop: "thumb",
+        gravity: "south"
+      }
+    ]
+  };
+}
   });
 
   upload = multer({ storage });

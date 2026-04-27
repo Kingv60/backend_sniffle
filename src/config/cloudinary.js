@@ -1,6 +1,6 @@
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const multer = require('multer');
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const multer = require("multer");
 
 const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
 const apiKey = process.env.CLOUDINARY_API_KEY;
@@ -18,49 +18,63 @@ if (cloudName && apiKey && apiSecret) {
   const storage = new CloudinaryStorage({
     cloudinary,
     params: async (req, file) => {
-  const isSvg =
-    file.mimetype === "image/svg+xml" ||
-    file.originalname.toLowerCase().endsWith(".svg");
+      const ext = file.originalname.toLowerCase();
+      const mime = file.mimetype;
 
-  if (isSvg) {
-    return {
-      folder: "skillconnect_media",
-      resource_type: "image",
-      format: "svg"
-    };
-  }
+      const isSvg =
+        mime === "image/svg+xml" ||
+        ext.endsWith(".svg");
 
-  return {
-    folder: "skillconnect_media",
-    resource_type: "auto",
-    quality: "auto",
-    flags: "sanitize",
-    allowed_formats: [
-      "jpg",
-      "png",
-      "mp4",
-      "jpeg",
-      "gif",
-      "mov",
-      "mpeg",
-      "webp",
-      "bmp",
-      "tiff",
-      "ico"
-    ],
-    eager: [
-      {
-        width: 320,
-        height: 240,
-        crop: "thumb",
-        gravity: "south"
+      if (isSvg) {
+        return {
+          folder: "skillconnect_media",
+          resource_type: "image",
+          format: "svg",
+          public_id: `${Date.now()}-${file.originalname.replace(/\.[^/.]+$/, "")}`,
+        };
       }
-    ]
-  };
-}
+
+      return {
+        folder: "skillconnect_media",
+        resource_type: "auto",
+        quality: "auto",
+        flags: "sanitize",
+        allowed_formats: [
+          "jpg",
+          "jpeg",
+          "png",
+          "gif",
+          "webp",
+          "bmp",
+          "tiff",
+          "ico",
+          "mp4",
+          "mov",
+          "mpeg",
+          "avi",
+          "pdf",
+          "doc",
+          "docx",
+          "txt"
+        ],
+        eager: [
+          {
+            width: 320,
+            height: 240,
+            crop: "thumb",
+            gravity: "south",
+          },
+        ],
+      };
+    },
   });
 
-  upload = multer({ storage });
+  upload = multer({
+    storage,
+    limits: {
+      fileSize: 500 * 1024 * 1024,
+    },
+  });
 }
 
 module.exports = { cloudinary, upload };

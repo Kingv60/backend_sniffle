@@ -316,7 +316,7 @@ exports.getVideosByCourse = async (req, res) => {
   const course_id = req.params.course_id;
 
   try {
-    // We query course_videos directly since course_lessons is empty
+    // We query course_videos directly since course_lessons is empty...
     const result = await pool.query(
       `SELECT 
         video_id,

@@ -24,12 +24,26 @@ router.get('/views/:video_id', videoController.getVideoViews);
 
 router.get('/users/:user_id/total-views', videoController.getUserTotalViews);
 
+// Route for getting the next course videos after the current lesson
+router.get('/suggestions/next-video/:video_id', videoController.getNextCourseVideoSuggestions);
+
 // Route for getting suggestions for a specific user
 router.get('/suggestions/:user_id', videoController.getSuggestedVideos);
 
 // DELETE request: /api/videos/delete/45
 // Note: 'auth' middleware use karein taaki sirf logged-in user delete kar sake
 router.delete('/delete/:video_id', auth, videoController.deleteVideo);
+
+// Update existing video metadata or files (thumbnail/video) without changing its order
+router.put(
+  '/update/:video_id',
+  auth,
+  upload.fields([
+    { name: 'video', maxCount: 1 },
+    { name: 'thumbnail', maxCount: 1 }
+  ]),
+  videoController.updateVideo
+);
 
 router.post(
   '/:user_id', 

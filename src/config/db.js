@@ -1,7 +1,7 @@
 const { Pool } = require("pg");
 
 const pool = new Pool({
-  user: "skillconnect_app_user,
+  user: "skillconnect_app_user",
   host: "dpg-d7o41aegvqtc73b7if5g-a.oregon-postgres.render.com",
   database: "skillconnect_app",
   password: "1y1JKBoPUCxoiKCEKFqSHR4glJoMRlMH",

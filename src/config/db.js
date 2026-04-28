@@ -1,10 +1,10 @@
 const { Pool } = require("pg");
 
 const pool = new Pool({
-  user: "skillconnect_x434_user",
-  host: "dpg-d73trvjuibrs73aq9i9g-a.oregon-postgres.render.com",
-  database: "skillconnect_x434",
-  password: "0psa2TTgdsr7Xx0Wdv8ANtefX9VzRxnb",
+  user: "skillconnect_app_user,
+  host: "dpg-d7o41aegvqtc73b7if5g-a.oregon-postgres.render.com",
+  database: "skillconnect_app",
+  password: "1y1JKBoPUCxoiKCEKFqSHR4glJoMRlMH",
   port: 5432,
   ssl: {
     rejectUnauthorized: false,
